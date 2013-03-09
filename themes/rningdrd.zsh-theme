@@ -13,25 +13,12 @@
 eval my_gray='$FG[237]'
 eval my_orange='$FG[214]'
 
+# if root then make the ">>" red, other wise green
 if [ $UID -eq 0 ]; then NCOLOR="red"; else NCOLOR="green"; fi
+
 local return_code="%(?..%{$fg[red]%}%? ↵%{$reset_color%})"
 local bar
 local oldsize
-
-bars() {
-if (( oldsize == ${COLUMNS} )); then
-# do nothing
-else
-    local i=0
-    bar=""
-    oldsize=${COLUMNS}
-    while (( i < $(( ${COLUMNS} - 30 )) )); do
-        bar="${bar}-"
-        i=$(($i + 1))
-    done
-fi
-}
-add-zsh-hook precmd bars
 
 # primary prompt
 PROMPT='$FG[237]${bar}%{$reset_color%}
@@ -41,8 +28,28 @@ $(git_prompt_info) \
 PROMPT2='%{$fg[red]%}\ %{$reset_color%}'
 RPS1='${return_code}'
 
-# right prompt
-RPROMPT='$my_gray%* | %D | $(cellout BAT1)%{$reset_color%}%'
+# right prompt, it comes next so that we can use it
+# to adjust the length of $bar
+RPROMPT='$my_gray %* | %D | $(cellout BAT1)%{$reset_color%}%'
+
+bars() {
+# only recalculate the length of the bar if the terminal width changed
+if [[ "$oldsize" == "$COLUMNS" ]]; then
+    # do nothing
+else
+    local rprompt_len=$(echo "$RPROMPT" | sed s/'\$my_gray %\*'/22:00:00/ | sed s/%D/13-03-08/ | sed s/'$(cellout BAT1)%{\$reset_color%}%'/$(cellout BAT1)/ | wc -m)
+    local i=0
+    bar=""
+    oldsize="$COLUMNS"
+    while (( $i < $(( $COLUMNS - $(( $rprompt_len + 2 )) )) )); do
+        bar="${bar}-"
+        i=$(( $i + 1 ))
+    done
+fi
+}
+add-zsh-hook precmd bars
+
+
 
 # git settings
 ZSH_THEME_GIT_PROMPT_PREFIX="$FG[075](branch:"
